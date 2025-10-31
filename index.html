@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Brick Breaker Game</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #d1c4e9;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    #gameContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    h1 {
+      color: #311b92;
+      margin-bottom: 10px;
+    }
+
+    #scoreBoard {
+      color: #4527a0;
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    canvas {
+      background-color: #ede7f6;
+      border: 3px solid #4527a0;
+      border-radius: 10px;
+    }
+
+    #startBtn {
+      background-color: #673ab7;
+      color: white;
+      border: none;
+      padding: 10px 25px;
+      font-size: 18px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 15px;
+      transition: background 0.2s;
+    }
+
+    #startBtn:hover {
+      background-color: #5e35b1;
+    }
+
+    #resultBox {
+      margin-top: 15px;
+      color: #1a237e;
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="gameContainer">
+    <h1>Brick Breaker</h1>
+    <div id="scoreBoard">
+      <span id="timer">⏱️ Time: 0s</span> |
+      <span id="highScore">🏆 Best Time: -</span>
+    </div>
+    <canvas id="gameCanvas" width="480" height="320"></canvas>
+    <button id="startBtn">Start</button>
+    <div id="resultBox"></div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    const startBtn = document.getElementById("startBtn");
+    const resultBox = document.getElementById("resultBox");
+    const timerDisplay = document.getElementById("timer");
+    const highScoreDisplay = document.getElementById("highScore");
+
+    // Game variables
+    let ballRadius = 10;
+    const paddleHeight = 10;
+    const paddleWidth = 75;
+    const brickRowCount = 3;
+    const brickColumnCount = 5;
+    const brickWidth = 75;
+    const brickHeight = 20;
+    const brickPadding = 10;
+    const brickOffsetTop = 30;
+    const brickOffsetLeft = 30;
+
+    let bricks = [];
+    let x, y, dx, dy, paddleX;
+    let gameRunning = false;
+    let startTime = 0;
+    let timerInterval;
+
+    // Load high score from localStorage
+    let bestTime = localStorage.getItem("bestTime");
+    if (bestTime) highScoreDisplay.textContent = `🏆 Best Time: ${bestTime}s`;
+
+    // Create bricks
+    function createBricks() {
+      bricks = [];
+      for (let c = 0; c < brickColumnCount; c++) {
+        bricks[c] = [];
+        for (let r = 0; r < brickRowCount; r++) {
+          bricks[c][r] = { x: 0, y: 0, status: 1 };
+        }
+      }
+    }
+
+    function drawBricks() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          if (bricks[c][r].status === 1) {
+            const brickX = c * (brickWidth + brickPadding) + brickOffsetLeft;
+            const brickY = r * (brickHeight + brickPadding) + brickOffsetTop;
+            bricks[c][r].x = brickX;
+            bricks[c][r].y = brickY;
+            ctx.beginPath();
+            ctx.rect(brickX, brickY, brickWidth, brickHeight);
+            ctx.fillStyle = "#9575cd";
+            ctx.fill();
+            ctx.closePath();
+          }
+        }
+      }
+    }
+
+    function drawBall() {
+      ctx.beginPath();
+      ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#311b92";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawPaddle() {
+      ctx.beginPath();
+      ctx.rect(paddleX, canvas.height - paddleHeight - 5, paddleWidth, paddleHeight);
+      ctx.fillStyle = "#7e57c2";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function collisionDetection() {
+      for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+          const b = bricks[c][r];
+          if (b.status === 1) {
+            if (x > b.x && x < b.x + brickWidth && y > b.y && y < b.y + brickHeight) {
+              dy = -dy;
+              b.status = 0;
+            }
+          }
+        }
+      }
+    }
+
+    function allBricksCleared() {
+      return bricks.flat().every(b => b.status === 0);
+    }
+
+    function updateTimer() {
+      const time = Math.floor((Date.now() - startTime) / 1000);
+      timerDisplay.textContent = `⏱️ Time: ${time}s`;
+      return time;
+    }
+
+    function stopGame(message) {
+      gameRunning = false;
+      clearInterval(timerInterval);
+      const finalTime = updateTimer();
+
+      if (message === "WIN") {
+        resultBox.textContent = `🎉 You Win! Time: ${finalTime}s`;
+        if (!bestTime || finalTime < bestTime) {
+          localStorage.setItem("bestTime", finalTime);
+          bestTime = finalTime;
+          highScoreDisplay.textContent = `🏆 Best Time: ${bestTime}s`;
+        }
+      } else {
+        resultBox.textContent = "💀 Game Over!";
+      }
+    }
+
+    function draw() {
+      if (!gameRunning) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawBricks();
+      drawBall();
+      drawPaddle();
+      collisionDetection();
+
+      if (x + dx > canvas.width - ballRadius || x + dx < ballRadius) dx = -dx;
+      if (y + dy < ballRadius) dy = -dy;
+      else if (y + dy > canvas.height - ballRadius - paddleHeight - 5) {
+        if (x > paddleX && x < paddleX + paddleWidth) dy = -dy;
+        else if (y + dy > canvas.height - ballRadius) return stopGame("LOSE");
+      }
+
+      if (allBricksCleared()) return stopGame("WIN");
+
+      x += dx;
+      y += dy;
+
+      requestAnimationFrame(draw);
+    }
+
+
+    document.addEventListener("mousemove", e => {
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      paddleX = Math.max(0, Math.min(canvas.width - paddleWidth, mouseX - paddleWidth / 2));
+    });
+
+    startBtn.addEventListener("click", () => {
+      x = canvas.width / 2;
+      y = canvas.height - 30;
+      dx = 2;
+      dy = -2;
+      paddleX = (canvas.width - paddleWidth) / 2;
+      createBricks();
+      resultBox.textContent = "";
+      gameRunning = true;
+      startTime = Date.now();
+
+      clearInterval(timerInterval);
+      timerInterval = setInterval(updateTimer, 500);
+
+      draw();
+    });
+  </script>
+</body>
+</html>
