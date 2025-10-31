@@ -81,7 +81,7 @@
     const timerDisplay = document.getElementById("timer");
     const highScoreDisplay = document.getElementById("highScore");
 
-    // Game variables
+
     let ballRadius = 10;
     const paddleHeight = 10;
     const paddleWidth = 75;
@@ -99,11 +99,11 @@
     let startTime = 0;
     let timerInterval;
 
-    // Load high score from localStorage
+ 
     let bestTime = localStorage.getItem("bestTime");
     if (bestTime) highScoreDisplay.textContent = `🏆 Best Time: ${bestTime}s`;
 
-    // Create bricks
+ 
     function createBricks() {
       bricks = [];
       for (let c = 0; c < brickColumnCount; c++) {
@@ -238,3 +238,4 @@
   </script>
 </body>
 </html>
+
